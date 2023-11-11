@@ -1,8 +1,6 @@
-# Example Machine Activation
+# Example License Validation
 
-This is an example of a typical machine activation flow written in Python.
-You may of course choose to implement a different flow if required - this
-only serves as an example implementation.
+This is an example of how to validate a license key using Keygen's API.
 
 ## Running the example
 
@@ -23,16 +21,15 @@ Next, install dependencies with [`pip`](https://packaging.python.org/):
 python3 -m pip install -r requirements.txt
 ```
 
-## Activating a machine
+## Validating a license key
 
-To perform a machine activation, run the script and supply a license key:
+To perform a license key validation, run the script and supply a license key:
 
 ```
 python3 main.py some-license-key-here
 ```
 
-The script will use a SHA256-HMAC of your device's [machineid](https://github.com/keygen-sh/py-machineid)
-for the machine's fingerprint.
+The script will validate the license key and print the validation result.
 
 ## Questions?
 

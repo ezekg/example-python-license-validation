@@ -1,11 +1,9 @@
-import machineid
 import requests
 import json
 import sys
 import os
 
-def activate_license(license_key):
-  machine_fingerprint = machineid.hashed_id('example-app')
+def validate_license_key(key):
   validation = requests.post(
     "https://api.keygen.sh/v1/accounts/{}/licenses/actions/validate-key".format(os.environ['KEYGEN_ACCOUNT_ID']),
     headers={
@@ -14,8 +12,7 @@ def activate_license(license_key):
     },
     data=json.dumps({
       "meta": {
-        "scope": { "fingerprint": machine_fingerprint },
-        "key": license_key
+        "key": key
       }
     })
   ).json()
@@ -23,64 +20,33 @@ def activate_license(license_key):
   if "errors" in validation:
     errs = validation["errors"]
 
-    return False, "license validation failed: {}".format(
-      map(lambda e: "{} - {}".format(e["title"], e["detail"]).lower(), errs)
+    print(
+      "license validation failed: {}".format(
+        '\n'.join(map(lambda e: "{} - {}".format(e["title"], e["detail"]).lower(), errs))
+      )
     )
 
-  # If the license is valid for the current machine, that means it has
-  # already been activated. We can return early.
-  if validation["meta"]["valid"]:
-    return True, "license has already been activated on this machine"
+    return
 
-  # Otherwise, we need to determine why the current license is not valid,
-  # because in our case it may be invalid because another machine has
-  # already been activated, or it may be invalid because it doesn't
-  # have any activated machines associated with it yet and in that case
-  # we'll need to activate one.
-  validation_code = validation["meta"]["code"]
-  activation_is_required = validation_code == 'FINGERPRINT_SCOPE_MISMATCH' or \
-                           validation_code == 'NO_MACHINES' or \
-                           validation_code == 'NO_MACHINE'
+  valid = validation["meta"]["valid"]
+  code = validation["meta"]["code"]
+  detail = validation["meta"]["detail"]
+  id = None
 
-  if not activation_is_required:
-    return False, "license {}".format(validation["meta"]["detail"])
+  if validation["data"]:
+    id = validation["data"]["id"]
 
-  # If we've gotten this far, then our license has not been activated yet,
-  # so we should go ahead and activate the current machine.
-  activation = requests.post(
-    "https://api.keygen.sh/v1/accounts/{}/machines".format(os.environ['KEYGEN_ACCOUNT_ID']),
-    headers={
-      "Authorization": "License {}".format(license_key),
-      "Content-Type": "application/vnd.api+json",
-      "Accept": "application/vnd.api+json"
-    },
-    data=json.dumps({
-      "data": {
-        "type": "machines",
-        "attributes": {
-          "fingerprint": machine_fingerprint
-        },
-        "relationships": {
-          "license": {
-            "data": { "type": "licenses", "id": validation["data"]["id"] }
-          }
-        }
-      }
-    })
-  ).json()
-
-  # If we get back an error, our activation failed.
-  if "errors" in activation:
-    errs = activation["errors"]
-
-    return False, "license activation failed: {}".format(
-      ','.join(map(lambda e: "{} - {}".format(e["title"], e["detail"]).lower(), errs))
+  if valid:
+    print(
+      "license is valid: detail={} code={} id={}".format(detail, code, id)
     )
-
-  return True, "license activated"
+  else:
+    print(
+      "license is invalid: detail={} code={} id={}".format(detail, code, id)
+    )
 
 # Run from the command line:
 #   python main.py some_license_key
-status, msg = activate_license(sys.argv[1])
+key = sys.argv[1]
 
-print(status, msg)
+validate_license_key(key)
